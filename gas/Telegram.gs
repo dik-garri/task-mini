@@ -67,56 +67,80 @@ function getWebAppUrl() {
  * Notify user about assigned task
  */
 function notifyTaskAssigned(task, creator) {
-  const team = findTeamById(task.team_id);
-  const text = `📋 <b>Новая задача</b>\n\n` +
-    `"${escapeHtml(task.title)}"\n\n` +
-    `Команда: ${escapeHtml(team.name)}\n` +
-    (task.due_date ? `Срок: ${formatDate(task.due_date)}\n` : '') +
-    `От: ${escapeHtml(creator.display_name)}`;
+  try {
+    const team = findTeamById(task.team_id);
+    if (!team) {
+      Logger.log('notifyTaskAssigned: Team not found: ' + task.team_id);
+      return;
+    }
+    const text = `📋 <b>Новая задача</b>\n\n` +
+      `"${escapeHtml(task.title)}"\n\n` +
+      `Команда: ${escapeHtml(team.name)}\n` +
+      (task.due_date ? `Срок: ${formatDate(task.due_date)}\n` : '') +
+      `От: ${escapeHtml(creator.display_name)}`;
 
-  sendMessageWithButtons(task.assignee_id, text, [[
-    miniAppButton('Открыть задачу', 'task_' + task.task_id)
-  ]]);
+    sendMessageWithButtons(task.assignee_id, text, [[
+      miniAppButton('Открыть задачу', 'task_' + task.task_id)
+    ]]);
+  } catch (e) {
+    Logger.log('notifyTaskAssigned error: ' + e.message);
+  }
 }
 
 /**
  * Notify creator that task is completed
  */
 function notifyTaskCompleted(task, completedBy) {
-  if (task.created_by === completedBy.user_id) return; // Don't notify self
+  try {
+    if (task.created_by === completedBy.user_id) return; // Don't notify self
 
-  const team = findTeamById(task.team_id);
-  const text = `✅ <b>Задача выполнена</b>\n\n` +
-    `"${escapeHtml(task.title)}"\n\n` +
-    `Команда: ${escapeHtml(team.name)}\n` +
-    `Выполнил: ${escapeHtml(completedBy.display_name)}`;
+    const team = findTeamById(task.team_id);
+    if (!team) {
+      Logger.log('notifyTaskCompleted: Team not found: ' + task.team_id);
+      return;
+    }
+    const text = `✅ <b>Задача выполнена</b>\n\n` +
+      `"${escapeHtml(task.title)}"\n\n` +
+      `Команда: ${escapeHtml(team.name)}\n` +
+      `Выполнил: ${escapeHtml(completedBy.display_name)}`;
 
-  sendMessage(task.created_by, text);
+    sendMessage(task.created_by, text);
+  } catch (e) {
+    Logger.log('notifyTaskCompleted error: ' + e.message);
+  }
 }
 
 /**
  * Send task reminder
  */
 function sendReminder(task, reminderType) {
-  const team = findTeamById(task.team_id);
+  try {
+    const team = findTeamById(task.team_id);
+    if (!team) {
+      Logger.log('sendReminder: Team not found: ' + task.team_id);
+      return;
+    }
 
-  let timeText = '';
-  if (reminderType === 'before_day') {
-    timeText = 'Срок: завтра';
-  } else if (reminderType === 'on_day') {
-    timeText = 'Срок: сегодня';
-  } else {
-    timeText = 'Срок: ' + formatDate(task.due_date);
+    let timeText = '';
+    if (reminderType === 'before_day') {
+      timeText = 'Срок: завтра';
+    } else if (reminderType === 'on_day') {
+      timeText = 'Срок: сегодня';
+    } else {
+      timeText = 'Срок: ' + formatDate(task.due_date);
+    }
+
+    const text = `🔔 <b>Напоминание</b>\n\n` +
+      `"${escapeHtml(task.title)}"\n\n` +
+      `Команда: ${escapeHtml(team.name)}\n` +
+      timeText;
+
+    sendMessageWithButtons(task.assignee_id, text, [[
+      miniAppButton('Открыть задачу', 'task_' + task.task_id)
+    ]]);
+  } catch (e) {
+    Logger.log('sendReminder error: ' + e.message);
   }
-
-  const text = `🔔 <b>Напоминание</b>\n\n` +
-    `"${escapeHtml(task.title)}"\n\n` +
-    `Команда: ${escapeHtml(team.name)}\n` +
-    timeText;
-
-  sendMessageWithButtons(task.assignee_id, text, [[
-    miniAppButton('Открыть задачу', 'task_' + task.task_id)
-  ]]);
 }
 
 // --- Helpers ---
