@@ -647,7 +647,7 @@
       const dueText = task.due_date ? formatDate(task.due_date) : '';
 
       return `
-        <div class="task-card" onclick="showTaskDetail('${task.task_id}')">
+        <div class="task-card" data-task-id="${escapeHtml(task.task_id)}" onclick="showTaskDetail(this.dataset.taskId)">
           <div class="task-title">${escapeHtml(task.title)}</div>
           <div class="task-meta">
             <span class="status-badge status-${task.status}">${getStatusText(task.status)}</span>
@@ -856,13 +856,11 @@
       const creator = task.creator || { display_name: 'Неизвестно' };
       const dueText = task.due_date ? formatDate(task.due_date) : 'Не указан';
 
-      const isMyTask = task.assignee_id === String(currentUserId);
-
       let statusButtons = '';
       if (task.status === 'open') {
-        statusButtons = `<button class="btn btn-primary" onclick="changeStatus('${task.task_id}', 'in_progress')">Взять в работу</button>`;
+        statusButtons = `<button class="btn btn-primary" data-task-id="${escapeHtml(task.task_id)}" onclick="changeStatus(this.dataset.taskId, 'in_progress')">Взять в работу</button>`;
       } else if (task.status === 'in_progress') {
-        statusButtons = `<button class="btn btn-primary" onclick="changeStatus('${task.task_id}', 'done')">Выполнено</button>`;
+        statusButtons = `<button class="btn btn-primary" data-task-id="${escapeHtml(task.task_id)}" onclick="changeStatus(this.dataset.taskId, 'done')">Выполнено</button>`;
       }
 
       document.getElementById('task-detail-content').innerHTML = `
@@ -874,7 +872,7 @@
         <br>
         ${statusButtons}
         <br><br>
-        <button class="btn btn-danger" onclick="confirmDeleteTask('${task.task_id}')">Удалить</button>
+        <button class="btn btn-danger" data-task-id="${escapeHtml(task.task_id)}" onclick="confirmDeleteTask(this.dataset.taskId)">Удалить</button>
       `;
 
       showModal('modal-task-detail');
@@ -924,18 +922,17 @@
     function showTeamSettings() {
       if (!currentTeam) return;
 
-      const isLeader = currentTeam.my_role === 'leader';
       const membersHtml = members.map(m => `
         <div style="padding: 8px 0; border-bottom: 1px solid var(--border-color)">
-          ${escapeHtml(m.display_name)} ${m.username ? '(@' + m.username + ')' : ''}
+          ${escapeHtml(m.display_name)} ${m.username ? '(@' + escapeHtml(m.username) + ')' : ''}
           <span style="color: var(--secondary-text)">${m.role === 'leader' ? '👑' : ''}</span>
         </div>
       `).join('');
 
       document.getElementById('team-settings-content').innerHTML = `
-        <p><b>Код приглашения:</b> ${currentTeam.invite_code}</p>
+        <p><b>Код приглашения:</b> ${escapeHtml(currentTeam.invite_code)}</p>
         <p><b>Ссылка:</b></p>
-        <input class="form-input" readonly value="t.me/${tg.initDataUnsafe?.bot?.username || 'TaskMiniBot'}?start=${currentTeam.invite_code}" onclick="this.select()">
+        <input class="form-input" readonly value="t.me/${tg.initDataUnsafe?.bot?.username || 'TaskMiniBot'}?start=${escapeHtml(currentTeam.invite_code)}" onclick="this.select()">
         <br><br>
         <p><b>Участники (${members.length}):</b></p>
         ${membersHtml}
