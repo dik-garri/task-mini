@@ -11,6 +11,11 @@ function findTeamById(teamId) {
   const sheet = getSheet(CONFIG.SHEETS.TEAMS);
   const data = sheet.getDataRange().getValues();
 
+  // Check for empty sheet (only header or empty)
+  if (data.length <= 1) {
+    return null;
+  }
+
   for (let i = 1; i < data.length; i++) {
     if (data[i][0] === teamId) {
       return {
@@ -35,6 +40,11 @@ function findTeamById(teamId) {
 function findTeamByInviteCode(inviteCode) {
   const sheet = getSheet(CONFIG.SHEETS.TEAMS);
   const data = sheet.getDataRange().getValues();
+
+  // Check for empty sheet (only header or empty)
+  if (data.length <= 1) {
+    return null;
+  }
 
   for (let i = 1; i < data.length; i++) {
     if (data[i][5] === inviteCode) {
@@ -61,13 +71,20 @@ function findTeamByInviteCode(inviteCode) {
  */
 function createTeam(name, createdBy, creationMode) {
   const sheet = getSheet(CONFIG.SHEETS.TEAMS);
+
+  // Generate unique invite code with collision detection
+  let inviteCode = generateInviteCode();
+  while (findTeamByInviteCode(inviteCode) !== null) {
+    inviteCode = generateInviteCode();
+  }
+
   const team = {
     team_id: generateId(),
     name: name,
     created_by: createdBy,
     created_at: new Date(),
     task_creation_mode: creationMode || CONFIG.CREATION_MODE.ALL,
-    invite_code: generateInviteCode()
+    invite_code: inviteCode
   };
 
   sheet.appendRow([
