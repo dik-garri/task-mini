@@ -3,6 +3,21 @@
  */
 
 /**
+ * Safely parse JSON string
+ * @param {string} jsonString
+ * @returns {Object|null}
+ */
+function safeJsonParse(jsonString) {
+  if (!jsonString) return null;
+  try {
+    return JSON.parse(jsonString);
+  } catch (e) {
+    Logger.log('JSON parse error: ' + e.message);
+    return null;
+  }
+}
+
+/**
  * Find task by ID
  * @param {string} taskId
  * @returns {Object|null}
@@ -26,7 +41,7 @@ function findTaskById(taskId) {
         created_by: data[i][4],
         status: data[i][5],
         due_date: data[i][6],
-        reminder_settings: data[i][7] ? JSON.parse(data[i][7]) : null,
+        reminder_settings: safeJsonParse(data[i][7]),
         created_at: data[i][8],
         updated_at: data[i][9],
         _row: i + 1
@@ -61,7 +76,7 @@ function getTeamTasks(teamId) {
         created_by: data[i][4],
         status: data[i][5],
         due_date: data[i][6],
-        reminder_settings: data[i][7] ? JSON.parse(data[i][7]) : null,
+        reminder_settings: safeJsonParse(data[i][7]),
         created_at: data[i][8],
         updated_at: data[i][9],
         _row: i + 1
@@ -99,7 +114,7 @@ function getUserTasks(userId, teamId) {
   }
 
   for (let i = 1; i < data.length; i++) {
-    const matchesUser = data[i][3] === String(userId);
+    const matchesUser = String(data[i][3]) === String(userId);
     const matchesTeam = !teamId || data[i][1] === teamId;
 
     if (matchesUser && matchesTeam) {
@@ -111,7 +126,7 @@ function getUserTasks(userId, teamId) {
         created_by: data[i][4],
         status: data[i][5],
         due_date: data[i][6],
-        reminder_settings: data[i][7] ? JSON.parse(data[i][7]) : null,
+        reminder_settings: safeJsonParse(data[i][7]),
         created_at: data[i][8],
         updated_at: data[i][9],
         _row: i + 1
