@@ -299,23 +299,3 @@ function apiDeleteTask(user, payload) {
   const success = deleteTask(payload.task_id);
   return apiSuccess({ deleted: success });
 }
-
-// --- Placeholder notification functions (to be implemented in Task 8) ---
-
-/**
- * Placeholder: Send notification when task is assigned
- * Will be implemented in Task 8
- */
-function notifyTaskAssigned(task, creator) {
-  // Placeholder - will be implemented in Task 8 (Bot Integration)
-  Logger.log('TODO: Send task assigned notification for task: ' + task.task_id);
-}
-
-/**
- * Placeholder: Send notification when task is completed
- * Will be implemented in Task 8
- */
-function notifyTaskCompleted(task, completedBy) {
-  // Placeholder - will be implemented in Task 8 (Bot Integration)
-  Logger.log('TODO: Send task completed notification for task: ' + task.task_id);
-}
