@@ -63,23 +63,28 @@ function handleMessage(message) {
  * /start command
  */
 function handleStart(chatId, user) {
-  const teams = getUserTeams(user.user_id);
+  try {
+    const teams = getUserTeams(user.user_id);
 
-  let text;
-  if (teams.length === 0) {
-    text = `Добро пожаловать в <b>TaskMini</b>!\n\n` +
-      `Простой помощник для командных задач.\n\n` +
-      `Создайте команду или присоединитесь по приглашению.`;
-  } else {
-    text = `С возвращением!\n\n` +
-      `У вас ${teams.length} команд(ы).\n` +
-      `Откройте TaskMini для управления задачами.`;
+    let text;
+    if (teams.length === 0) {
+      text = `Добро пожаловать в <b>TaskMini</b>!\n\n` +
+        `Простой помощник для командных задач.\n\n` +
+        `Создайте команду или присоединитесь по приглашению.`;
+    } else {
+      text = `С возвращением!\n\n` +
+        `У вас ${teams.length} команд(ы).\n` +
+        `Откройте TaskMini для управления задачами.`;
+    }
+
+    sendMessageWithButtons(chatId, text, [
+      [miniAppButton('Открыть TaskMini', '')],
+      [{ text: 'Присоединиться по коду', callback_data: 'join_prompt' }]
+    ]);
+  } catch (err) {
+    Logger.log('handleStart error: ' + err.message);
+    sendMessage(chatId, 'Произошла ошибка. Попробуйте позже.');
   }
-
-  sendMessageWithButtons(chatId, text, [
-    [miniAppButton('Открыть TaskMini', '')],
-    [{ text: 'Присоединиться по коду', callback_data: 'join_prompt' }]
-  ]);
 }
 
 /**
@@ -100,97 +105,118 @@ function handleStartWithParam(chatId, user, param) {
  * /my - list my tasks
  */
 function handleMyTasks(chatId, user) {
-  const tasks = getUserTasks(user.user_id);
-  const openTasks = tasks.filter(t => t.status !== CONFIG.STATUS.DONE);
+  try {
+    const tasks = getUserTasks(user.user_id);
+    const openTasks = tasks.filter(t => t.status !== CONFIG.STATUS.DONE);
 
-  if (openTasks.length === 0) {
-    sendMessage(chatId, 'У вас нет открытых задач.');
-    return;
+    if (openTasks.length === 0) {
+      sendMessage(chatId, 'У вас нет открытых задач.');
+      return;
+    }
+
+    let text = `<b>Ваши задачи (${openTasks.length}):</b>\n\n`;
+
+    openTasks.slice(0, 10).forEach((task) => {
+      const team = findTeamById(task.team_id);
+      if (!team) return; // Skip tasks from deleted teams
+      const statusIcon = task.status === CONFIG.STATUS.IN_PROGRESS ? '🔄' : '⏳';
+      const dueText = task.due_date ? ` (${formatDate(task.due_date)})` : '';
+      text += `${statusIcon} ${escapeHtml(task.title)}${dueText}\n`;
+      text += `   <i>${escapeHtml(team.name)}</i>\n\n`;
+    });
+
+    if (openTasks.length > 10) {
+      text += `... и ещё ${openTasks.length - 10}`;
+    }
+
+    sendMessageWithButtons(chatId, text, [[
+      miniAppButton('Все задачи', '')
+    ]]);
+  } catch (err) {
+    Logger.log('handleMyTasks error: ' + err.message);
+    sendMessage(chatId, 'Произошла ошибка. Попробуйте позже.');
   }
-
-  let text = `<b>Ваши задачи (${openTasks.length}):</b>\n\n`;
-
-  openTasks.slice(0, 10).forEach((task, i) => {
-    const team = findTeamById(task.team_id);
-    const statusIcon = task.status === CONFIG.STATUS.IN_PROGRESS ? '🔄' : '⏳';
-    const dueText = task.due_date ? ` (${formatDate(task.due_date)})` : '';
-    text += `${statusIcon} ${escapeHtml(task.title)}${dueText}\n`;
-    text += `   <i>${escapeHtml(team.name)}</i>\n\n`;
-  });
-
-  if (openTasks.length > 10) {
-    text += `... и ещё ${openTasks.length - 10}`;
-  }
-
-  sendMessageWithButtons(chatId, text, [[
-    miniAppButton('Все задачи', '')
-  ]]);
 }
 
 /**
  * /new - prompt to create task (redirect to mini app)
  */
 function handleNewTask(chatId, user) {
-  const teams = getUserTeams(user.user_id);
+  try {
+    const teams = getUserTeams(user.user_id);
 
-  if (teams.length === 0) {
-    sendMessage(chatId, 'Сначала создайте или присоединитесь к команде.');
-    return;
+    if (teams.length === 0) {
+      sendMessage(chatId, 'Сначала создайте или присоединитесь к команде.');
+      return;
+    }
+
+    sendMessageWithButtons(chatId, 'Создайте задачу в приложении:', [[
+      miniAppButton('Создать задачу', 'new_task')
+    ]]);
+  } catch (err) {
+    Logger.log('handleNewTask error: ' + err.message);
+    sendMessage(chatId, 'Произошла ошибка. Попробуйте позже.');
   }
-
-  sendMessageWithButtons(chatId, 'Создайте задачу в приложении:', [[
-    miniAppButton('Создать задачу', 'new_task')
-  ]]);
 }
 
 /**
  * /join CODE - join team by invite code
  */
 function handleJoin(chatId, user, code) {
-  const team = findTeamByInviteCode(code.toUpperCase());
+  try {
+    const team = findTeamByInviteCode(code.toUpperCase());
 
-  if (!team) {
-    sendMessage(chatId, 'Команда не найдена. Проверьте код приглашения.');
-    return;
-  }
+    if (!team) {
+      sendMessage(chatId, 'Команда не найдена. Проверьте код приглашения.');
+      return;
+    }
 
-  // Check if already member
-  const existing = findMember(team.team_id, user.user_id);
-  if (existing) {
+    // Check if already member
+    const existing = findMember(team.team_id, user.user_id);
+    if (existing) {
+      sendMessageWithButtons(chatId,
+        `Вы уже в команде "${escapeHtml(team.name)}"`, [[
+        miniAppButton('Открыть', '')
+      ]]);
+      return;
+    }
+
+    // Add member
+    addMember(team.team_id, user, CONFIG.ROLE.MEMBER);
+
     sendMessageWithButtons(chatId,
-      `Вы уже в команде "${escapeHtml(team.name)}"`, [[
-      miniAppButton('Открыть', '')
+      `Вы присоединились к команде "<b>${escapeHtml(team.name)}</b>"!`, [[
+      miniAppButton('Открыть TaskMini', '')
     ]]);
-    return;
+  } catch (err) {
+    Logger.log('handleJoin error: ' + err.message);
+    sendMessage(chatId, 'Произошла ошибка. Попробуйте позже.');
   }
-
-  // Add member
-  addMember(team.team_id, user, CONFIG.ROLE.MEMBER);
-
-  sendMessageWithButtons(chatId,
-    `Вы присоединились к команде "<b>${escapeHtml(team.name)}</b>"!`, [[
-    miniAppButton('Открыть TaskMini', '')
-  ]]);
 }
 
 /**
  * Handle callback query (inline button press)
  */
 function handleCallback(callback) {
-  const chatId = callback.message.chat.id;
-  const data = callback.data;
-  const user = {
-    user_id: String(callback.from.id),
-    username: callback.from.username || '',
-    display_name: callback.from.first_name
-  };
+  try {
+    const chatId = callback.message.chat.id;
+    const data = callback.data;
+    const user = {
+      user_id: String(callback.from.id),
+      username: callback.from.username || '',
+      display_name: callback.from.first_name + (callback.from.last_name ? ' ' + callback.from.last_name : '')
+    };
 
-  if (data === 'join_prompt') {
-    sendMessage(chatId, 'Отправьте команду:\n/join КОД\n\nНапример: /join ABC123');
+    if (data === 'join_prompt') {
+      sendMessage(chatId, 'Отправьте команду:\n/join КОД\n\nНапример: /join ABC123');
+    }
+
+    // Answer callback to remove loading state
+    answerCallback(callback.id);
+  } catch (err) {
+    Logger.log('handleCallback error: ' + err.message);
+    answerCallback(callback.id);
   }
-
-  // Answer callback to remove loading state
-  answerCallback(callback.id);
 }
 
 /**
