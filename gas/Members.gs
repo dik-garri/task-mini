@@ -101,6 +101,12 @@ function getUserTeams(userId) {
  * @returns {Object} created membership
  */
 function addMember(teamId, user, role) {
+  // Verify team exists
+  const team = findTeamById(teamId);
+  if (!team) {
+    throw new Error('Team not found: ' + teamId);
+  }
+
   // Check if already member
   const existing = findMember(teamId, user.user_id);
   if (existing) {
@@ -146,9 +152,11 @@ function removeMember(teamId, userId) {
   if (member.role === CONFIG.ROLE.LEADER) {
     const remaining = getTeamMembers(teamId);
     if (remaining.length > 0) {
-      // Promote first member
-      const newLeader = remaining[0];
-      sheet.getRange(newLeader._row, 5).setValue(CONFIG.ROLE.LEADER);
+      // Re-fetch to get correct row index after deletion
+      const newLeader = findMember(teamId, remaining[0].user_id);
+      if (newLeader) {
+        sheet.getRange(newLeader._row, 5).setValue(CONFIG.ROLE.LEADER);
+      }
     } else {
       // Last member left - delete team
       deleteTeam(teamId);
