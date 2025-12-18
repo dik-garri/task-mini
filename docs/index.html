@@ -814,7 +814,7 @@
     function showTeamSettings() {
       if (!currentTeam) return;
 
-      const botUsername = tg.initDataUnsafe?.bot?.username || 'YourBotUsername';
+      const botUsername = tg.initDataUnsafe?.bot?.username || 'Task_Mini_Bot';
       const membersHtml = members.map(m => `
         <div style="padding: 8px 0; border-bottom: 1px solid var(--border-color)">
           ${escapeHtml(m.display_name)} ${m.username ? '(@' + escapeHtml(m.username) + ')' : ''}
