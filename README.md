@@ -42,25 +42,9 @@ gas/
 
 1. Открой https://sheets.google.com
 2. Создай новую таблицу **"TaskMini"**
-3. Создай 4 листа с заголовками:
+3. Скопируй **SHEET_ID** из URL: `https://docs.google.com/spreadsheets/d/SHEET_ID_HERE/edit`
 
-**Лист `teams`:**
-| team_id | name | created_by | created_at | task_creation_mode | invite_code |
-|---------|------|------------|------------|-------------------|-------------|
-
-**Лист `team_members`:**
-| team_id | user_id | username | display_name | role | joined_at |
-|---------|---------|----------|--------------|------|-----------|
-
-**Лист `tasks`:**
-| task_id | team_id | title | assignee_id | created_by | status | due_date | reminder_settings | created_at | updated_at |
-|---------|---------|-------|-------------|------------|--------|----------|-------------------|------------|------------|
-
-**Лист `sent_reminders`:**
-| task_id | reminder_type | sent_at |
-|---------|---------------|---------|
-
-4. Скопируй **SHEET_ID** из URL: `https://docs.google.com/spreadsheets/d/SHEET_ID_HERE/edit`
+> Листы и заголовки создадутся автоматически при запуске `setupSheets()` в Шаге 4
 
 ### Шаг 2: Создай Telegram Bot
 
@@ -76,18 +60,25 @@ gas/
 2. **New Project** → назови **"TaskMini"**
 3. Нажми на шестерёнку (Project Settings)
 4. Включи **"Show appsscript.json manifest file in editor"**
-5. Скопируй содержимое всех файлов из папки `gas/`:
+5. В разделе **Script Properties** добавь:
+   - `SHEET_ID` → ID таблицы из Шага 1
+   - `BOT_TOKEN` → токен бота из Шага 2
+6. Скопируй содержимое всех файлов из папки `gas/`:
    - Замени содержимое `appsscript.json`
    - Создай файлы: `Config.gs`, `Teams.gs`, `Members.gs`, `Tasks.gs`, `Api.gs`, `Telegram.gs`, `Bot.gs`, `Triggers.gs`, `Web.gs`
    - Создай HTML файл: `index.html`
 
-6. В файле `Config.gs` замени плейсхолдеры на реальные значения:
-```javascript
-SHEET_ID: 'ТВОЙ_SHEET_ID_ИЗ_ШАГА_1',
-BOT_TOKEN: 'ТВОЙ_BOT_TOKEN_ИЗ_ШАГА_2',
-```
+### Шаг 4: Настрой листы в таблице
 
-### Шаг 4: Деплой Web App
+1. В Apps Script выбери функцию `setupSheets` в выпадающем списке
+2. Нажми **Run**
+3. Разреши доступ если попросит
+4. Проверь логи (View → Logs) — должно быть `Setup complete!`
+5. Открой Google Sheet — должны появиться 4 листа с заголовками
+
+> Можно также запустить `testConfig` чтобы проверить что SHEET_ID и BOT_TOKEN настроены правильно
+
+### Шаг 5: Деплой Web App
 
 1. В Apps Script нажми **Deploy → New deployment**
 2. Нажми шестерёнку рядом с "Select type" → выбери **Web app**
@@ -98,7 +89,7 @@ BOT_TOKEN: 'ТВОЙ_BOT_TOKEN_ИЗ_ШАГА_2',
 4. Нажми **Deploy**
 5. Скопируй **Web app URL**
 
-### Шаг 5: Настрой Webhook бота
+### Шаг 6: Настрой Webhook бота
 
 1. В Apps Script открой файл `Bot.gs`
 2. Выбери функцию `setWebhook` в выпадающем списке
@@ -106,16 +97,16 @@ BOT_TOKEN: 'ТВОЙ_BOT_TOKEN_ИЗ_ШАГА_2',
 4. Разреши доступ если попросит
 5. Проверь логи (View → Logs) — должно быть `"ok": true`
 
-### Шаг 6: Настрой Mini App в BotFather
+### Шаг 7: Настрой Mini App в BotFather
 
 1. Открой @BotFather в Telegram
 2. Отправь `/mybots`
 3. Выбери своего бота
 4. **Bot Settings → Menu Button → Configure menu button**
-5. Отправь URL из Шага 4
+5. Отправь URL из Шага 5
 6. Отправь текст кнопки: `TaskMini`
 
-### Шаг 7: Включи напоминания
+### Шаг 8: Включи напоминания
 
 1. В Apps Script выбери функцию `setupReminderTrigger`
 2. Нажми **Run**
