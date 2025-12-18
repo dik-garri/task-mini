@@ -3,18 +3,40 @@
  */
 
 /**
- * Handle incoming webhook from Telegram
+ * Handle incoming POST requests (Telegram webhook or API call)
  */
 function doPost(e) {
   try {
-    const update = JSON.parse(e.postData.contents);
-    logDebug('Bot', 'doPost', null, { update_id: update.update_id, has_message: !!update.message, has_callback: !!update.callback_query });
-    handleUpdate(update);
+    const data = JSON.parse(e.postData.contents);
+
+    // Check if this is an API request from frontend (has 'action' field)
+    if (data.action) {
+      logDebug('Bot', 'doPost_api', null, { action: data.action });
+      return handleApiRequest(data);
+    }
+
+    // Otherwise it's a Telegram webhook (has 'update_id' field)
+    logDebug('Bot', 'doPost_telegram', null, { update_id: data.update_id, has_message: !!data.message, has_callback: !!data.callback_query });
+    handleUpdate(data);
+    return ContentService.createTextOutput('OK');
+
   } catch (err) {
     logError('Bot', 'doPost', null, { postData: e.postData ? e.postData.contents.substring(0, 200) : 'none' }, err);
-  }
 
-  return ContentService.createTextOutput('OK');
+    // Return error as JSON for API requests
+    const errorResponse = { ok: false, error: err.message };
+    return ContentService.createTextOutput(JSON.stringify(errorResponse))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/**
+ * Handle API request from frontend
+ */
+function handleApiRequest(data) {
+  const result = api(data.action, data.initData || '', JSON.stringify(data.payload || {}));
+  return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 /**

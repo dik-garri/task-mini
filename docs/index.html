@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>TaskMini</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg-color: #ffffff;
+      --text-color: #000000;
+      --secondary-text: #666666;
+      --border-color: #e0e0e0;
+      --primary-color: #2481cc;
+      --success-color: #31b545;
+      --warning-color: #f5a623;
+      --danger-color: #e53935;
+      --card-bg: #f5f5f5;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-color: #1c1c1d;
+        --text-color: #ffffff;
+        --secondary-text: #8e8e93;
+        --border-color: #3a3a3c;
+        --card-bg: #2c2c2e;
+      }
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-color);
+      color: var(--text-color);
+      min-height: 100vh;
+      padding-bottom: 70px;
+    }
+
+    .header {
+      position: sticky;
+      top: 0;
+      background: var(--bg-color);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 16px;
+      z-index: 100;
+    }
+
+    .header-title { font-size: 17px; font-weight: 600; text-align: center; }
+
+    .team-selector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 8px 0;
+      cursor: pointer;
+    }
+
+    .team-selector-name { font-size: 15px; font-weight: 500; }
+    .team-selector-arrow { font-size: 12px; color: var(--secondary-text); }
+
+    .tabs { display: flex; border-bottom: 1px solid var(--border-color); }
+
+    .tab {
+      flex: 1;
+      padding: 12px;
+      text-align: center;
+      font-size: 14px;
+      color: var(--secondary-text);
+      border: none;
+      background: none;
+      cursor: pointer;
+    }
+
+    .tab.active {
+      color: var(--primary-color);
+      border-bottom: 2px solid var(--primary-color);
+      margin-bottom: -1px;
+    }
+
+    .task-list { padding: 8px 16px; }
+
+    .task-group-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--secondary-text);
+      text-transform: uppercase;
+      padding: 16px 0 8px;
+    }
+
+    .task-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+
+    .task-title { font-size: 15px; font-weight: 500; margin-bottom: 6px; }
+
+    .task-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+      color: var(--secondary-text);
+    }
+
+    .task-assignee, .task-due { display: flex; align-items: center; gap: 4px; }
+    .task-due.overdue { color: var(--danger-color); }
+
+    .status-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .status-open { background: var(--warning-color); color: #000; }
+    .status-in_progress { background: var(--primary-color); color: #fff; }
+    .status-done { background: var(--success-color); color: #fff; }
+
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--bg-color);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      padding: 8px 16px;
+      padding-bottom: max(8px, env(safe-area-inset-bottom));
+    }
+
+    .nav-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 8px;
+      border: none;
+      background: none;
+      color: var(--secondary-text);
+      cursor: pointer;
+      font-size: 11px;
+    }
+
+    .nav-btn.active { color: var(--primary-color); }
+    .nav-btn-icon { font-size: 20px; }
+
+    .add-btn {
+      background: var(--primary-color);
+      color: #fff;
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-top: -16px;
+      border: none;
+      cursor: pointer;
+    }
+
+    .empty-state { text-align: center; padding: 48px 24px; color: var(--secondary-text); }
+    .empty-state-icon { font-size: 48px; margin-bottom: 16px; }
+    .empty-state-title { font-size: 17px; font-weight: 500; color: var(--text-color); margin-bottom: 8px; }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 200;
+    }
+
+    .modal-overlay.active { display: flex; align-items: flex-end; }
+
+    .modal {
+      background: var(--bg-color);
+      border-radius: 16px 16px 0 0;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 16px;
+      padding-bottom: max(16px, env(safe-area-inset-bottom));
+    }
+
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .modal-title { font-size: 17px; font-weight: 600; }
+    .modal-close { font-size: 24px; background: none; border: none; color: var(--secondary-text); cursor: pointer; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 13px; font-weight: 500; color: var(--secondary-text); margin-bottom: 6px; }
+
+    .form-input, .form-select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 15px;
+      background: var(--bg-color);
+      color: var(--text-color);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-primary { background: var(--primary-color); color: #fff; }
+    .btn-danger { background: var(--danger-color); color: #fff; }
+
+    .loading { text-align: center; padding: 48px; color: var(--secondary-text); }
+
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    .team-list-item { padding: 12px; border-bottom: 1px solid var(--border-color); cursor: pointer; }
+    .team-list-item:hover { background: var(--card-bg); }
+    .team-list-item-name { font-size: 15px; font-weight: 500; }
+    .team-list-item-role { font-size: 13px; color: var(--secondary-text); }
+
+    .config-banner {
+      background: #ff9800;
+      color: #000;
+      padding: 12px;
+      text-align: center;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Config Banner (shown if API not configured) -->
+  <div id="config-banner" class="config-banner" style="display:none">
+    API_URL not configured. Edit config.js
+  </div>
+
+  <!-- Main Screen -->
+  <div id="screen-main" class="screen active">
+    <div class="header">
+      <div class="team-selector" onclick="showTeamSelector()">
+        <span class="team-selector-name" id="current-team-name">Загрузка...</span>
+        <span class="team-selector-arrow">▼</span>
+      </div>
+      <div class="tabs">
+        <button class="tab active" data-filter="my" onclick="setFilter('my')">Мои</button>
+        <button class="tab" data-filter="all" onclick="setFilter('all')">Все</button>
+      </div>
+    </div>
+
+    <div id="task-list" class="task-list">
+      <div class="loading">Загрузка...</div>
+    </div>
+
+    <div class="bottom-nav">
+      <button class="nav-btn active">
+        <span class="nav-btn-icon">📋</span>
+        Задачи
+      </button>
+      <button class="add-btn" onclick="showCreateTask()">+</button>
+      <button class="nav-btn" onclick="showTeamSettings()">
+        <span class="nav-btn-icon">⚙️</span>
+        Команда
+      </button>
+    </div>
+  </div>
+
+  <!-- No Teams Screen -->
+  <div id="screen-no-teams" class="screen">
+    <div class="empty-state">
+      <div class="empty-state-icon">👥</div>
+      <div class="empty-state-title">Нет команд</div>
+      <p>Создайте команду или присоединитесь по приглашению</p>
+      <br>
+      <button class="btn btn-primary" onclick="showCreateTeam()">Создать команду</button>
+      <br><br>
+      <button class="btn" style="background: var(--card-bg)" onclick="showJoinTeam()">Присоединиться</button>
+    </div>
+  </div>
+
+  <!-- Team Selector Modal -->
+  <div id="modal-team-selector" class="modal-overlay" onclick="closeModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <span class="modal-title">Выберите команду</span>
+        <button class="modal-close" onclick="hideTeamSelector()">×</button>
+      </div>
+      <div id="team-list"></div>
+      <br>
+      <button class="btn btn-primary" onclick="showCreateTeam()">+ Создать команду</button>
+    </div>
+  </div>
+
+  <!-- Create Task Modal -->
+  <div id="modal-create-task" class="modal-overlay" onclick="closeModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <span class="modal-title">Новая задача</span>
+        <button class="modal-close" onclick="hideCreateTask()">×</button>
+      </div>
+      <form onsubmit="submitCreateTask(event)">
+        <div class="form-group">
+          <label class="form-label">Задача</label>
+          <input type="text" class="form-input" id="task-title" placeholder="Что нужно сделать?" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Исполнитель</label>
+          <select class="form-select" id="task-assignee"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Срок (опционально)</label>
+          <input type="date" class="form-input" id="task-due-date">
+        </div>
+        <div class="form-group" id="reminder-group" style="display:none">
+          <label class="form-label">Напоминание</label>
+          <select class="form-select" id="task-reminder">
+            <option value="">Без напоминания</option>
+            <option value="before_day">За день до срока</option>
+            <option value="on_day">В день срока</option>
+            <option value="both">За день и в день срока</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Создать</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Create Team Modal -->
+  <div id="modal-create-team" class="modal-overlay" onclick="closeModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <span class="modal-title">Новая команда</span>
+        <button class="modal-close" onclick="hideCreateTeam()">×</button>
+      </div>
+      <form onsubmit="submitCreateTeam(event)">
+        <div class="form-group">
+          <label class="form-label">Название команды</label>
+          <input type="text" class="form-input" id="team-name" placeholder="Например: Прославление" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Кто может создавать задачи?</label>
+          <select class="form-select" id="team-creation-mode">
+            <option value="all">Все участники</option>
+            <option value="leader_only">Только я (лидер)</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Создать</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Join Team Modal -->
+  <div id="modal-join-team" class="modal-overlay" onclick="closeModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <span class="modal-title">Присоединиться</span>
+        <button class="modal-close" onclick="hideJoinTeam()">×</button>
+      </div>
+      <form onsubmit="submitJoinTeam(event)">
+        <div class="form-group">
+          <label class="form-label">Код приглашения</label>
+          <input type="text" class="form-input" id="invite-code" placeholder="ABC123" maxlength="6" required style="text-transform: uppercase">
+        </div>
+        <button type="submit" class="btn btn-primary">Присоединиться</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Task Detail Modal -->
+  <div id="modal-task-detail" class="modal-overlay" onclick="closeModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <span class="modal-title">Задача</span>
+        <button class="modal-close" onclick="hideTaskDetail()">×</button>
+      </div>
+      <div id="task-detail-content"></div>
+    </div>
+  </div>
+
+  <!-- Team Settings Modal -->
+  <div id="modal-team-settings" class="modal-overlay" onclick="closeModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <span class="modal-title">Настройки команды</span>
+        <button class="modal-close" onclick="hideTeamSettings()">×</button>
+      </div>
+      <div id="team-settings-content"></div>
+    </div>
+  </div>
+
+  <!-- Config: Set your Google Apps Script URL here -->
+  <script src="config.js"></script>
+
+  <script>
+    // =============================================
+    // TELEGRAM WEBAPP INITIALIZATION
+    // =============================================
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+
+    // Get initData - this will work on GitHub Pages!
+    const initData = tg.initData || '';
+    const currentUserId = tg.initDataUnsafe?.user?.id || '';
+
+    console.log('TaskMini:', {
+      initData_length: initData.length,
+      user_id: currentUserId,
+      platform: tg.platform,
+      version: tg.version
+    });
+
+    // Check config
+    if (typeof API_URL === 'undefined' || !API_URL) {
+      document.getElementById('config-banner').style.display = 'block';
+      console.error('API_URL not configured! Create config.js with: const API_URL = "https://script.google.com/macros/s/.../exec";');
+    }
+
+    // =============================================
+    // STATE
+    // =============================================
+    let currentTeam = null;
+    let teams = [];
+    let tasks = [];
+    let members = [];
+    let currentFilter = 'my';
+
+    // =============================================
+    // API (using fetch to Google Apps Script)
+    // =============================================
+    async function api(action, payload) {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          action: action,
+          initData: initData,
+          payload: payload || {}
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Network error: ' + response.status);
+      }
+
+      return await response.json();
+    }
+
+    // =============================================
+    // INIT
+    // =============================================
+    async function init() {
+      if (!API_URL) {
+        showError('API not configured');
+        return;
+      }
+
+      try {
+        const result = await api('getMyTeams');
+        if (!result.ok) {
+          showError(result.error);
+          return;
+        }
+
+        teams = result.teams;
+
+        if (teams.length === 0) {
+          showScreen('no-teams');
+        } else {
+          currentTeam = teams[0];
+          showScreen('main');
+          await loadTeamData();
+        }
+      } catch (e) {
+        showError('Ошибка загрузки: ' + e.message);
+        console.error(e);
+      }
+    }
+
+    async function loadTeamData() {
+      if (!currentTeam) return;
+
+      document.getElementById('current-team-name').textContent = currentTeam.name;
+      document.getElementById('task-list').innerHTML = '<div class="loading">Загрузка...</div>';
+
+      try {
+        const [tasksResult, membersResult] = await Promise.all([
+          api('getTeamTasks', { team_id: currentTeam.team_id }),
+          api('getTeamMembers', { team_id: currentTeam.team_id })
+        ]);
+
+        if (tasksResult.ok) tasks = tasksResult.tasks;
+        if (membersResult.ok) members = membersResult.members;
+
+        renderTasks();
+        updateAssigneeSelect();
+      } catch (e) {
+        showError('Ошибка загрузки задач');
+        console.error(e);
+      }
+    }
+
+    // =============================================
+    // RENDER
+    // =============================================
+    function renderTasks() {
+      const container = document.getElementById('task-list');
+
+      let filtered = tasks;
+      if (currentFilter === 'my') {
+        filtered = tasks.filter(t => t.assignee_id === String(currentUserId));
+      }
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">📝</div>
+            <div class="empty-state-title">Нет задач</div>
+            <p>${currentFilter === 'my' ? 'У вас нет назначенных задач' : 'В команде пока нет задач'}</p>
+          </div>
+        `;
+        return;
+      }
+
+      const open = filtered.filter(t => t.status === 'open');
+      const inProgress = filtered.filter(t => t.status === 'in_progress');
+      const done = filtered.filter(t => t.status === 'done');
+
+      let html = '';
+
+      if (open.length > 0) {
+        html += '<div class="task-group-title">Открытые</div>';
+        html += open.map(renderTaskCard).join('');
+      }
+
+      if (inProgress.length > 0) {
+        html += '<div class="task-group-title">В работе</div>';
+        html += inProgress.map(renderTaskCard).join('');
+      }
+
+      if (done.length > 0) {
+        html += '<div class="task-group-title">Выполненные</div>';
+        html += done.map(renderTaskCard).join('');
+      }
+
+      container.innerHTML = html;
+    }
+
+    function renderTaskCard(task) {
+      const assignee = task.assignee || { display_name: 'Не назначено' };
+      const dueClass = task.due_date && new Date(task.due_date) < new Date() ? 'overdue' : '';
+      const dueText = task.due_date ? formatDate(task.due_date) : '';
+
+      return `
+        <div class="task-card" data-task-id="${escapeHtml(task.task_id)}" onclick="showTaskDetail(this.dataset.taskId)">
+          <div class="task-title">${escapeHtml(task.title)}</div>
+          <div class="task-meta">
+            <span class="status-badge status-${task.status}">${getStatusText(task.status)}</span>
+            <span class="task-assignee">👤 ${escapeHtml(assignee.display_name)}</span>
+            ${dueText ? `<span class="task-due ${dueClass}">📅 ${dueText}</span>` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    function setFilter(filter) {
+      currentFilter = filter;
+      document.querySelectorAll('.tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.filter === filter);
+      });
+      renderTasks();
+    }
+
+    // =============================================
+    // SCREENS & MODALS
+    // =============================================
+    function showScreen(name) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById('screen-' + name).classList.add('active');
+    }
+
+    function closeModal(event) {
+      if (event.target.classList.contains('modal-overlay')) {
+        event.target.classList.remove('active');
+      }
+    }
+
+    function showModal(id) { document.getElementById(id).classList.add('active'); }
+    function hideModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    // Team selector
+    function showTeamSelector() {
+      const container = document.getElementById('team-list');
+      container.innerHTML = teams.map(team => `
+        <div class="team-list-item" onclick="selectTeam('${team.team_id}')">
+          <div class="team-list-item-name">${escapeHtml(team.name)}</div>
+          <div class="team-list-item-role">${team.my_role === 'leader' ? 'Лидер' : 'Участник'}</div>
+        </div>
+      `).join('');
+      showModal('modal-team-selector');
+    }
+
+    function hideTeamSelector() { hideModal('modal-team-selector'); }
+
+    async function selectTeam(teamId) {
+      currentTeam = teams.find(t => t.team_id === teamId);
+      hideTeamSelector();
+      await loadTeamData();
+    }
+
+    // Create task
+    function showCreateTask() {
+      document.getElementById('task-title').value = '';
+      document.getElementById('task-due-date').value = '';
+      document.getElementById('task-reminder').value = '';
+      document.getElementById('reminder-group').style.display = 'none';
+      showModal('modal-create-task');
+    }
+
+    function hideCreateTask() { hideModal('modal-create-task'); }
+
+    function updateAssigneeSelect() {
+      const select = document.getElementById('task-assignee');
+      select.innerHTML = members.map(m =>
+        `<option value="${m.user_id}" ${m.user_id === String(currentUserId) ? 'selected' : ''}>
+          ${escapeHtml(m.display_name)}${m.user_id === String(currentUserId) ? ' (я)' : ''}
+        </option>`
+      ).join('');
+    }
+
+    document.getElementById('task-due-date')?.addEventListener('change', function() {
+      document.getElementById('reminder-group').style.display = this.value ? 'block' : 'none';
+    });
+
+    async function submitCreateTask(event) {
+      event.preventDefault();
+
+      const title = document.getElementById('task-title').value.trim();
+      const assigneeId = document.getElementById('task-assignee').value;
+      const dueDate = document.getElementById('task-due-date').value;
+      const reminder = document.getElementById('task-reminder').value;
+
+      let reminderSettings = null;
+      if (dueDate && reminder) {
+        reminderSettings = {
+          before_day: reminder === 'before_day' || reminder === 'both',
+          on_day: reminder === 'on_day' || reminder === 'both'
+        };
+      }
+
+      try {
+        const result = await api('createTask', {
+          team_id: currentTeam.team_id,
+          title: title,
+          assignee_id: assigneeId,
+          due_date: dueDate || null,
+          reminder_settings: reminderSettings
+        });
+
+        if (result.ok) {
+          hideCreateTask();
+          await loadTeamData();
+          tg.showAlert('Задача создана');
+        } else {
+          tg.showAlert(result.error);
+        }
+      } catch (e) {
+        tg.showAlert('Ошибка: ' + e.message);
+      }
+    }
+
+    // Create team
+    function showCreateTeam() {
+      hideTeamSelector();
+      document.getElementById('team-name').value = '';
+      showModal('modal-create-team');
+    }
+
+    function hideCreateTeam() { hideModal('modal-create-team'); }
+
+    async function submitCreateTeam(event) {
+      event.preventDefault();
+
+      const name = document.getElementById('team-name').value.trim();
+      const mode = document.getElementById('team-creation-mode').value;
+
+      try {
+        const result = await api('createTeam', { name: name, task_creation_mode: mode });
+
+        if (result.ok) {
+          hideCreateTeam();
+          teams.push({ ...result.team, my_role: 'leader' });
+          currentTeam = result.team;
+          showScreen('main');
+          await loadTeamData();
+          tg.showAlert('Команда создана!\n\nКод приглашения: ' + result.team.invite_code);
+        } else {
+          tg.showAlert(result.error);
+        }
+      } catch (e) {
+        tg.showAlert('Ошибка: ' + e.message);
+      }
+    }
+
+    // Join team
+    function showJoinTeam() {
+      document.getElementById('invite-code').value = '';
+      showModal('modal-join-team');
+    }
+
+    function hideJoinTeam() { hideModal('modal-join-team'); }
+
+    async function submitJoinTeam(event) {
+      event.preventDefault();
+
+      const code = document.getElementById('invite-code').value.trim().toUpperCase();
+
+      try {
+        const result = await api('joinTeam', { invite_code: code });
+
+        if (result.ok) {
+          hideJoinTeam();
+          teams.push({ ...result.team, my_role: 'member' });
+          currentTeam = result.team;
+          showScreen('main');
+          await loadTeamData();
+          tg.showAlert('Вы присоединились к команде "' + result.team.name + '"');
+        } else {
+          tg.showAlert(result.error);
+        }
+      } catch (e) {
+        tg.showAlert('Ошибка: ' + e.message);
+      }
+    }
+
+    // Task detail
+    function showTaskDetail(taskId) {
+      const task = tasks.find(t => t.task_id === taskId);
+      if (!task) return;
+
+      const assignee = task.assignee || { display_name: 'Не назначено' };
+      const creator = task.creator || { display_name: 'Неизвестно' };
+      const dueText = task.due_date ? formatDate(task.due_date) : 'Не указан';
+
+      let statusButtons = '';
+      if (task.status === 'open') {
+        statusButtons = `<button class="btn btn-primary" data-task-id="${escapeHtml(task.task_id)}" onclick="changeStatus(this.dataset.taskId, 'in_progress')">Взять в работу</button>`;
+      } else if (task.status === 'in_progress') {
+        statusButtons = `<button class="btn btn-primary" data-task-id="${escapeHtml(task.task_id)}" onclick="changeStatus(this.dataset.taskId, 'done')">Выполнено</button>`;
+      }
+
+      document.getElementById('task-detail-content').innerHTML = `
+        <h3 style="margin-bottom: 16px">${escapeHtml(task.title)}</h3>
+        <p><b>Статус:</b> <span class="status-badge status-${task.status}">${getStatusText(task.status)}</span></p>
+        <p><b>Исполнитель:</b> ${escapeHtml(assignee.display_name)}</p>
+        <p><b>Срок:</b> ${dueText}</p>
+        <p><b>Создал:</b> ${escapeHtml(creator.display_name)}</p>
+        <br>
+        ${statusButtons}
+        <br><br>
+        <button class="btn btn-danger" data-task-id="${escapeHtml(task.task_id)}" onclick="confirmDeleteTask(this.dataset.taskId)">Удалить</button>
+      `;
+
+      showModal('modal-task-detail');
+    }
+
+    function hideTaskDetail() { hideModal('modal-task-detail'); }
+
+    async function changeStatus(taskId, newStatus) {
+      try {
+        const result = await api('updateTask', { task_id: taskId, status: newStatus });
+
+        if (result.ok) {
+          hideTaskDetail();
+          await loadTeamData();
+        } else {
+          tg.showAlert(result.error);
+        }
+      } catch (e) {
+        tg.showAlert('Ошибка: ' + e.message);
+      }
+    }
+
+    function confirmDeleteTask(taskId) {
+      tg.showConfirm('Удалить задачу?', async (confirmed) => {
+        if (confirmed) {
+          try {
+            const result = await api('deleteTask', { task_id: taskId });
+            if (result.ok) {
+              hideTaskDetail();
+              await loadTeamData();
+            } else {
+              tg.showAlert(result.error);
+            }
+          } catch (e) {
+            tg.showAlert('Ошибка: ' + e.message);
+          }
+        }
+      });
+    }
+
+    // Team settings
+    function showTeamSettings() {
+      if (!currentTeam) return;
+
+      const botUsername = tg.initDataUnsafe?.bot?.username || 'YourBotUsername';
+      const membersHtml = members.map(m => `
+        <div style="padding: 8px 0; border-bottom: 1px solid var(--border-color)">
+          ${escapeHtml(m.display_name)} ${m.username ? '(@' + escapeHtml(m.username) + ')' : ''}
+          <span style="color: var(--secondary-text)">${m.role === 'leader' ? '👑' : ''}</span>
+        </div>
+      `).join('');
+
+      document.getElementById('team-settings-content').innerHTML = `
+        <p><b>Код приглашения:</b> ${escapeHtml(currentTeam.invite_code)}</p>
+        <p><b>Ссылка:</b></p>
+        <input class="form-input" readonly value="t.me/${botUsername}?start=${escapeHtml(currentTeam.invite_code)}" onclick="this.select()">
+        <br><br>
+        <p><b>Участники (${members.length}):</b></p>
+        ${membersHtml}
+        <br>
+        <button class="btn btn-danger" onclick="confirmLeaveTeam()">Покинуть команду</button>
+      `;
+
+      showModal('modal-team-settings');
+    }
+
+    function hideTeamSettings() { hideModal('modal-team-settings'); }
+
+    function confirmLeaveTeam() {
+      tg.showConfirm('Покинуть команду "' + currentTeam.name + '"?', async (confirmed) => {
+        if (confirmed) {
+          try {
+            const result = await api('leaveTeam', { team_id: currentTeam.team_id });
+            if (result.ok) {
+              teams = teams.filter(t => t.team_id !== currentTeam.team_id);
+              hideTeamSettings();
+              if (teams.length === 0) {
+                currentTeam = null;
+                showScreen('no-teams');
+              } else {
+                currentTeam = teams[0];
+                await loadTeamData();
+              }
+            } else {
+              tg.showAlert(result.error);
+            }
+          } catch (e) {
+            tg.showAlert('Ошибка: ' + e.message);
+          }
+        }
+      });
+    }
+
+    // =============================================
+    // HELPERS
+    // =============================================
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function formatDate(date) {
+      const d = new Date(date);
+      const day = d.getDate();
+      const months = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+      return day + ' ' + months[d.getMonth()];
+    }
+
+    function getStatusText(status) {
+      const texts = { 'open': 'Открыта', 'in_progress': 'В работе', 'done': 'Выполнена' };
+      return texts[status] || status;
+    }
+
+    function showError(message) {
+      tg.showAlert(message || 'Произошла ошибка');
+    }
+
+    // Start
+    init();
+  </script>
+</body>
+</html>
