@@ -132,6 +132,11 @@ function addMember(teamId, user, role) {
     member.joined_at
   ]);
 
+  logInfo('Members', 'addMember', member.user_id, {
+    team_id: teamId,
+    role: role,
+    username: member.username
+  });
   return member;
 }
 
@@ -148,6 +153,8 @@ function removeMember(teamId, userId) {
   const sheet = getSheet(CONFIG.SHEETS.MEMBERS);
   sheet.deleteRow(member._row);
 
+  logInfo('Members', 'removeMember', userId, { team_id: teamId, role: member.role });
+
   // If leader left, promote first member
   if (member.role === CONFIG.ROLE.LEADER) {
     const remaining = getTeamMembers(teamId);
@@ -156,9 +163,11 @@ function removeMember(teamId, userId) {
       const newLeader = findMember(teamId, remaining[0].user_id);
       if (newLeader) {
         sheet.getRange(newLeader._row, 5).setValue(CONFIG.ROLE.LEADER);
+        logInfo('Members', 'promoteToLeader', newLeader.user_id, { team_id: teamId });
       }
     } else {
       // Last member left - delete team
+      logInfo('Members', 'deletingEmptyTeam', null, { team_id: teamId });
       deleteTeam(teamId);
     }
   }

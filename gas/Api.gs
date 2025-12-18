@@ -11,49 +11,73 @@
  * @returns {Object} response
  */
 function api(action, initData, payloadJson) {
-  try {
-    const user = parseInitData(initData);
-    const payload = payloadJson ? JSON.parse(payloadJson) : {};
+  let user = null;
+  let payload = null;
 
+  try {
+    user = parseInitData(initData);
+    payload = payloadJson ? JSON.parse(payloadJson) : {};
+
+    logInfo('Api', action, user.user_id, { payload: payload });
+
+    let result;
     switch (action) {
       case 'ping':
-        return apiSuccess({ time: new Date().toISOString(), user: user });
+        result = apiSuccess({ time: new Date().toISOString(), user: user });
+        break;
 
       case 'getMyTeams':
-        return apiGetMyTeams(user);
+        result = apiGetMyTeams(user);
+        break;
 
       case 'getTeamTasks':
-        return apiGetTeamTasks(user, payload);
+        result = apiGetTeamTasks(user, payload);
+        break;
 
       case 'getTeamMembers':
-        return apiGetTeamMembers(user, payload);
+        result = apiGetTeamMembers(user, payload);
+        break;
 
       case 'createTeam':
-        return apiCreateTeam(user, payload);
+        result = apiCreateTeam(user, payload);
+        break;
 
       case 'joinTeam':
-        return apiJoinTeam(user, payload);
+        result = apiJoinTeam(user, payload);
+        break;
 
       case 'updateTeam':
-        return apiUpdateTeam(user, payload);
+        result = apiUpdateTeam(user, payload);
+        break;
 
       case 'leaveTeam':
-        return apiLeaveTeam(user, payload);
+        result = apiLeaveTeam(user, payload);
+        break;
 
       case 'createTask':
-        return apiCreateTask(user, payload);
+        result = apiCreateTask(user, payload);
+        break;
 
       case 'updateTask':
-        return apiUpdateTask(user, payload);
+        result = apiUpdateTask(user, payload);
+        break;
 
       case 'deleteTask':
-        return apiDeleteTask(user, payload);
+        result = apiDeleteTask(user, payload);
+        break;
 
       default:
-        return apiError('Unknown action: ' + action);
+        result = apiError('Unknown action: ' + action);
     }
+
+    // Log result
+    if (!result.ok) {
+      logWarn('Api', action + '_failed', user ? user.user_id : '', { error: result.error, payload: payload });
+    }
+
+    return result;
   } catch (e) {
-    Logger.log('API Error: ' + e.message + '\n' + e.stack);
+    logError('Api', action, user ? user.user_id : '', { payload: payload, initData: initData ? initData.substring(0, 100) : '' }, e);
     return apiError(e.message);
   }
 }
@@ -62,15 +86,32 @@ function api(action, initData, payloadJson) {
  * Parse Telegram initData (simplified, no verification for MVP)
  */
 function parseInitData(initData) {
+  logDebug('Api', 'parseInitData', null, {
+    initData_length: initData ? initData.length : 0,
+    initData_preview: initData ? initData.substring(0, 100) : 'empty'
+  });
+
   if (!initData) {
+    logWarn('Api', 'parseInitData', null, { error: 'initData is empty' });
     return { user_id: '', username: '', display_name: 'Guest' };
   }
 
   try {
     const params = new URLSearchParams(initData);
     const userJson = params.get('user');
+
+    logDebug('Api', 'parseInitData_params', null, {
+      has_user: !!userJson,
+      auth_date: params.get('auth_date'),
+      hash: params.get('hash') ? 'present' : 'missing'
+    });
+
     if (userJson) {
       const user = JSON.parse(decodeURIComponent(userJson));
+      logInfo('Api', 'parseInitData_success', String(user.id), {
+        username: user.username,
+        first_name: user.first_name
+      });
       return {
         user_id: String(user.id),
         username: user.username || '',
@@ -78,7 +119,7 @@ function parseInitData(initData) {
       };
     }
   } catch (e) {
-    Logger.log('Parse initData error: ' + e.message);
+    logError('Api', 'parseInitData', null, { initData_preview: initData.substring(0, 50) }, e);
   }
 
   return { user_id: '', username: '', display_name: 'Guest' };

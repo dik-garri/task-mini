@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <base target="_top" />
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>TaskMini</title>
@@ -531,6 +532,15 @@
     // Get initData for API calls
     const initData = tg.initData || '';
 
+    // Debug: log initData info to console
+    console.log('TaskMini Debug:', {
+      initData_length: initData.length,
+      initData_preview: initData.substring(0, 100),
+      initDataUnsafe: tg.initDataUnsafe,
+      platform: tg.platform,
+      version: tg.version
+    });
+
     // State
     let currentTeam = null;
     let teams = [];
@@ -538,6 +548,11 @@
     let members = [];
     let currentFilter = 'my';
     let currentUserId = tg.initDataUnsafe?.user?.id || '';
+
+    // Debug: show warning if not authenticated
+    if (!currentUserId) {
+      console.warn('TaskMini: No user ID found. initData:', initData ? 'present but no user' : 'empty');
+    }
 
     // API wrapper
     function api(action, payload) {
@@ -998,6 +1013,47 @@
 
     function showError(message) {
       tg.showAlert(message || 'Произошла ошибка');
+    }
+
+    // Debug banner for development
+    function showDebugBanner() {
+      const banner = document.createElement('div');
+      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#f44;color:#fff;padding:8px;font-size:11px;z-index:9999;overflow:auto;max-height:200px;';
+
+      // Try to get launch params from URL hash (as Telegram passes them)
+      const hash = window.location.hash.slice(1);
+      const hashParams = new URLSearchParams(hash);
+      const tgWebAppData = hashParams.get('tgWebAppData');
+
+      const debugInfo = {
+        initData_length: initData.length,
+        platform: tg.platform,
+        version: tg.version,
+        colorScheme: tg.colorScheme,
+        initDataUnsafe: tg.initDataUnsafe,
+        // Additional debug info
+        location_hash: window.location.hash || '(empty)',
+        location_search: window.location.search || '(empty)',
+        location_href: window.location.href,
+        tgWebAppData_from_hash: tgWebAppData ? tgWebAppData.substring(0, 50) + '...' : '(none)',
+        parent_origin: (() => { try { return window.parent.location.origin; } catch(e) { return 'blocked'; } })()
+      };
+
+      banner.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:start;">
+          <div style="text-align:left;">
+            <b>Debug Info:</b><br>
+            <pre style="margin:4px 0;font-size:10px;white-space:pre-wrap;">${JSON.stringify(debugInfo, null, 2)}</pre>
+          </div>
+          <span onclick="this.parentElement.parentElement.remove()" style="cursor:pointer;padding:4px 8px;background:#fff3;border-radius:4px;">[X]</span>
+        </div>
+      `;
+      document.body.prepend(banner);
+    }
+
+    // Show debug banner if not authenticated or in debug mode
+    if (!currentUserId || window.location.search.includes('debug=1')) {
+      showDebugBanner();
     }
 
     // Start app

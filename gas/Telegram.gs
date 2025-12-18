@@ -27,7 +27,9 @@ function sendMessage(chatId, text, options) {
 
   const result = JSON.parse(response.getContentText());
   if (!result.ok) {
-    Logger.log('Telegram error: ' + JSON.stringify(result));
+    logError('Telegram', 'sendMessage', chatId, { text_preview: text.substring(0, 50) }, result.description || JSON.stringify(result));
+  } else {
+    logDebug('Telegram', 'sendMessage', chatId, { text_preview: text.substring(0, 50) });
   }
   return result;
 }
@@ -70,9 +72,11 @@ function notifyTaskAssigned(task, creator) {
   try {
     const team = findTeamById(task.team_id);
     if (!team) {
-      Logger.log('notifyTaskAssigned: Team not found: ' + task.team_id);
+      logWarn('Telegram', 'notifyTaskAssigned', task.assignee_id, { task_id: task.task_id, error: 'Team not found' });
       return;
     }
+    logInfo('Telegram', 'notifyTaskAssigned', task.assignee_id, { task_id: task.task_id, team_id: task.team_id });
+
     const text = `📋 <b>Новая задача</b>\n\n` +
       `"${escapeHtml(task.title)}"\n\n` +
       `Команда: ${escapeHtml(team.name)}\n` +
@@ -83,7 +87,7 @@ function notifyTaskAssigned(task, creator) {
       miniAppButton('Открыть задачу', 'task_' + task.task_id)
     ]]);
   } catch (e) {
-    Logger.log('notifyTaskAssigned error: ' + e.message);
+    logError('Telegram', 'notifyTaskAssigned', task.assignee_id, { task_id: task.task_id }, e);
   }
 }
 
@@ -96,9 +100,11 @@ function notifyTaskCompleted(task, completedBy) {
 
     const team = findTeamById(task.team_id);
     if (!team) {
-      Logger.log('notifyTaskCompleted: Team not found: ' + task.team_id);
+      logWarn('Telegram', 'notifyTaskCompleted', task.created_by, { task_id: task.task_id, error: 'Team not found' });
       return;
     }
+    logInfo('Telegram', 'notifyTaskCompleted', task.created_by, { task_id: task.task_id, completed_by: completedBy.user_id });
+
     const text = `✅ <b>Задача выполнена</b>\n\n` +
       `"${escapeHtml(task.title)}"\n\n` +
       `Команда: ${escapeHtml(team.name)}\n` +
@@ -106,7 +112,7 @@ function notifyTaskCompleted(task, completedBy) {
 
     sendMessage(task.created_by, text);
   } catch (e) {
-    Logger.log('notifyTaskCompleted error: ' + e.message);
+    logError('Telegram', 'notifyTaskCompleted', task.created_by, { task_id: task.task_id }, e);
   }
 }
 
@@ -117,9 +123,11 @@ function sendReminder(task, reminderType) {
   try {
     const team = findTeamById(task.team_id);
     if (!team) {
-      Logger.log('sendReminder: Team not found: ' + task.team_id);
+      logWarn('Telegram', 'sendReminder', task.assignee_id, { task_id: task.task_id, error: 'Team not found' });
       return;
     }
+
+    logInfo('Telegram', 'sendReminder', task.assignee_id, { task_id: task.task_id, reminder_type: reminderType });
 
     let timeText = '';
     if (reminderType === 'before_day') {
@@ -139,7 +147,7 @@ function sendReminder(task, reminderType) {
       miniAppButton('Открыть задачу', 'task_' + task.task_id)
     ]]);
   } catch (e) {
-    Logger.log('sendReminder error: ' + e.message);
+    logError('Telegram', 'sendReminder', task.assignee_id, { task_id: task.task_id }, e);
   }
 }
 

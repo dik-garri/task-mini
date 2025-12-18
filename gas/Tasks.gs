@@ -182,6 +182,12 @@ function createTask(taskData) {
     task.updated_at
   ]);
 
+  logInfo('Tasks', 'createTask', task.created_by, {
+    task_id: task.task_id,
+    team_id: task.team_id,
+    title: task.title,
+    assignee_id: task.assignee_id
+  });
   return task;
 }
 
@@ -219,6 +225,7 @@ function updateTask(taskId, updates) {
   // Update timestamp
   sheet.getRange(row, 10).setValue(new Date());
 
+  logInfo('Tasks', 'updateTask', null, { task_id: taskId, updates: updates });
   return findTaskById(taskId);
 }
 
@@ -233,6 +240,8 @@ function deleteTask(taskId) {
 
   const sheet = getSheet(CONFIG.SHEETS.TASKS);
   sheet.deleteRow(task._row);
+
+  logInfo('Tasks', 'deleteTask', null, { task_id: taskId, title: task.title, team_id: task.team_id });
   return true;
 }
 

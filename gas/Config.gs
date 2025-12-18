@@ -15,7 +15,8 @@ const CONFIG = {
     TEAMS: 'teams',
     MEMBERS: 'team_members',
     TASKS: 'tasks',
-    REMINDERS: 'sent_reminders'
+    REMINDERS: 'sent_reminders',
+    LOGS: 'logs'
   },
 
   // Task statuses
@@ -143,6 +144,20 @@ function setupSheets() {
   remindersSheet.setFrozenRows(1);
   Logger.log('Created sheet: ' + CONFIG.SHEETS.REMINDERS);
 
+  // Logs sheet
+  const logsSheet = getSheet(CONFIG.SHEETS.LOGS);
+  ensureHeader_(logsSheet, [
+    'timestamp',
+    'level',
+    'source',
+    'action',
+    'user_id',
+    'details',
+    'error'
+  ]);
+  logsSheet.setFrozenRows(1);
+  Logger.log('Created sheet: ' + CONFIG.SHEETS.LOGS);
+
   // Delete default Sheet1 if exists
   const ss = getSpreadsheet();
   const defaultSheet = ss.getSheetByName('Sheet1') || ss.getSheetByName('Лист1');
@@ -207,4 +222,123 @@ function testConfig() {
   }
 
   Logger.log('Configuration OK!');
+}
+
+// ============================================
+// LOGGING FUNCTIONS
+// ============================================
+
+/**
+ * Log levels
+ */
+const LOG_LEVEL = {
+  DEBUG: 'DEBUG',
+  INFO: 'INFO',
+  WARN: 'WARN',
+  ERROR: 'ERROR'
+};
+
+/**
+ * Write log entry to logs sheet
+ * @param {string} level - Log level (DEBUG, INFO, WARN, ERROR)
+ * @param {string} source - Source file/function (e.g., 'Api.gs', 'Bot.gs')
+ * @param {string} action - Action being performed (e.g., 'createTask', 'handleMessage')
+ * @param {string|number} userId - Telegram user ID (optional)
+ * @param {object|string} details - Additional details (will be JSON stringified)
+ * @param {string} error - Error message if any
+ */
+function writeLog(level, source, action, userId, details, error) {
+  try {
+    const sheet = getSheet(CONFIG.SHEETS.LOGS);
+    const timestamp = new Date().toISOString();
+
+    // Convert details to string
+    let detailsStr = '';
+    if (details) {
+      if (typeof details === 'object') {
+        try {
+          detailsStr = JSON.stringify(details);
+        } catch (e) {
+          detailsStr = String(details);
+        }
+      } else {
+        detailsStr = String(details);
+      }
+    }
+
+    sheet.appendRow([
+      timestamp,
+      level,
+      source || '',
+      action || '',
+      userId || '',
+      detailsStr,
+      error || ''
+    ]);
+  } catch (e) {
+    // Fallback to Logger if sheet logging fails
+    Logger.log('LOG ERROR: ' + e.message);
+    Logger.log(level + ' | ' + source + ' | ' + action + ' | ' + details);
+  }
+}
+
+/**
+ * Log debug message
+ */
+function logDebug(source, action, userId, details) {
+  writeLog(LOG_LEVEL.DEBUG, source, action, userId, details, null);
+}
+
+/**
+ * Log info message
+ */
+function logInfo(source, action, userId, details) {
+  writeLog(LOG_LEVEL.INFO, source, action, userId, details, null);
+}
+
+/**
+ * Log warning message
+ */
+function logWarn(source, action, userId, details) {
+  writeLog(LOG_LEVEL.WARN, source, action, userId, details, null);
+}
+
+/**
+ * Log error message
+ */
+function logError(source, action, userId, details, error) {
+  const errorMsg = error instanceof Error ? error.message + '\n' + error.stack : String(error);
+  writeLog(LOG_LEVEL.ERROR, source, action, userId, details, errorMsg);
+}
+
+/**
+ * Clear old logs (keep last N days)
+ * Run periodically to prevent sheet from growing too large
+ */
+function clearOldLogs(daysToKeep) {
+  const days = daysToKeep || 7;
+  const sheet = getSheet(CONFIG.SHEETS.LOGS);
+  const data = sheet.getDataRange().getValues();
+
+  if (data.length <= 1) return; // Only header
+
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - days);
+
+  const rowsToDelete = [];
+
+  // Find rows older than cutoff (skip header)
+  for (let i = 1; i < data.length; i++) {
+    const timestamp = new Date(data[i][0]);
+    if (timestamp < cutoffDate) {
+      rowsToDelete.push(i + 1); // +1 because sheet rows are 1-indexed
+    }
+  }
+
+  // Delete from bottom to top to preserve row indices
+  for (let i = rowsToDelete.length - 1; i >= 0; i--) {
+    sheet.deleteRow(rowsToDelete[i]);
+  }
+
+  Logger.log('Deleted ' + rowsToDelete.length + ' old log entries');
 }

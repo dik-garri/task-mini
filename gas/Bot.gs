@@ -8,9 +8,10 @@
 function doPost(e) {
   try {
     const update = JSON.parse(e.postData.contents);
+    logDebug('Bot', 'doPost', null, { update_id: update.update_id, has_message: !!update.message, has_callback: !!update.callback_query });
     handleUpdate(update);
   } catch (err) {
-    Logger.log('doPost error: ' + err.message);
+    logError('Bot', 'doPost', null, { postData: e.postData ? e.postData.contents.substring(0, 200) : 'none' }, err);
   }
 
   return ContentService.createTextOutput('OK');
@@ -39,6 +40,8 @@ function handleMessage(message) {
     display_name: message.from.first_name + (message.from.last_name ? ' ' + message.from.last_name : '')
   };
 
+  logInfo('Bot', 'handleMessage', user.user_id, { chatId: chatId, text: text, username: user.username });
+
   // Check for deep link start parameter
   if (text.startsWith('/start ')) {
     const param = text.substring(7).trim();
@@ -56,6 +59,8 @@ function handleMessage(message) {
   } else if (text.startsWith('/join ')) {
     const code = text.substring(6).trim();
     handleJoin(chatId, user, code);
+  } else {
+    logDebug('Bot', 'unhandled_message', user.user_id, { text: text });
   }
 }
 
@@ -82,7 +87,7 @@ function handleStart(chatId, user) {
       [{ text: 'Присоединиться по коду', callback_data: 'join_prompt' }]
     ]);
   } catch (err) {
-    Logger.log('handleStart error: ' + err.message);
+    logError('Bot', 'handleStart', user.user_id, { chatId: chatId }, err);
     sendMessage(chatId, 'Произошла ошибка. Попробуйте позже.');
   }
 }
@@ -133,7 +138,7 @@ function handleMyTasks(chatId, user) {
       miniAppButton('Все задачи', '')
     ]]);
   } catch (err) {
-    Logger.log('handleMyTasks error: ' + err.message);
+    logError('Bot', 'handleMyTasks', user.user_id, { chatId: chatId }, err);
     sendMessage(chatId, 'Произошла ошибка. Попробуйте позже.');
   }
 }
@@ -154,7 +159,7 @@ function handleNewTask(chatId, user) {
       miniAppButton('Создать задачу', 'new_task')
     ]]);
   } catch (err) {
-    Logger.log('handleNewTask error: ' + err.message);
+    logError('Bot', 'handleNewTask', user.user_id, { chatId: chatId }, err);
     sendMessage(chatId, 'Произошла ошибка. Попробуйте позже.');
   }
 }
@@ -183,13 +188,14 @@ function handleJoin(chatId, user, code) {
 
     // Add member
     addMember(team.team_id, user, CONFIG.ROLE.MEMBER);
+    logInfo('Bot', 'user_joined_team', user.user_id, { team_id: team.team_id, team_name: team.name });
 
     sendMessageWithButtons(chatId,
       `Вы присоединились к команде "<b>${escapeHtml(team.name)}</b>"!`, [[
       miniAppButton('Открыть TaskMini', '')
     ]]);
   } catch (err) {
-    Logger.log('handleJoin error: ' + err.message);
+    logError('Bot', 'handleJoin', user.user_id, { chatId: chatId, code: code }, err);
     sendMessage(chatId, 'Произошла ошибка. Попробуйте позже.');
   }
 }
@@ -214,7 +220,7 @@ function handleCallback(callback) {
     // Answer callback to remove loading state
     answerCallback(callback.id);
   } catch (err) {
-    Logger.log('handleCallback error: ' + err.message);
+    logError('Bot', 'handleCallback', user.user_id, { chatId: chatId, data: data }, err);
     answerCallback(callback.id);
   }
 }

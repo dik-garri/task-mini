@@ -96,6 +96,7 @@ function createTeam(name, createdBy, creationMode) {
     team.invite_code
   ]);
 
+  logInfo('Teams', 'createTeam', createdBy, { team_id: team.team_id, name: name });
   return team;
 }
 
@@ -152,5 +153,6 @@ function deleteTeam(teamId) {
   const teamsSheet = getSheet(CONFIG.SHEETS.TEAMS);
   teamsSheet.deleteRow(team._row);
 
+  logInfo('Teams', 'deleteTeam', null, { team_id: teamId, name: team.name });
   return true;
 }
