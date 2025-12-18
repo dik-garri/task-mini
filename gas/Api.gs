@@ -97,17 +97,27 @@ function parseInitData(initData) {
   }
 
   try {
-    const params = new URLSearchParams(initData);
-    const userJson = params.get('user');
+    // Manual URL params parsing (URLSearchParams may not work in GAS)
+    const params = {};
+    initData.split('&').forEach(function(pair) {
+      const idx = pair.indexOf('=');
+      if (idx > 0) {
+        const key = pair.substring(0, idx);
+        const value = pair.substring(idx + 1);
+        params[key] = decodeURIComponent(value);
+      }
+    });
+
+    const userJson = params['user'];
 
     logDebug('Api', 'parseInitData_params', null, {
       has_user: !!userJson,
-      auth_date: params.get('auth_date'),
-      hash: params.get('hash') ? 'present' : 'missing'
+      auth_date: params['auth_date'],
+      hash: params['hash'] ? 'present' : 'missing'
     });
 
     if (userJson) {
-      const user = JSON.parse(decodeURIComponent(userJson));
+      const user = JSON.parse(userJson);
       logInfo('Api', 'parseInitData_success', String(user.id), {
         username: user.username,
         first_name: user.first_name
